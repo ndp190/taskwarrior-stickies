@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "TaskWarriorStickies",
     platforms: [
-        .macOS(.v13)
+        .macOS("14.4")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

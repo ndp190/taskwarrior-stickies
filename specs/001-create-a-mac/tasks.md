@@ -57,18 +57,18 @@
 - [x] T011 [P] Integration test filter and sort tasks in Tests/integration/test_filter_sort.swift
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
-- [ ] T012 [P] Task model in Sources/models/Task.swift
-- [ ] T013 [P] Sticky model in Sources/models/Sticky.swift
-- [ ] T014 [P] Configuration model in Sources/models/Configuration.swift
-- [ ] T015 TaskService for TaskWarrior integration in Sources/services/TaskService.swift
-- [ ] T016 DataManager for persistence in Sources/services/DataManager.swift
-- [ ] T017 StickyView UI component in Sources/views/StickyView.swift
-- [ ] T018 PreferencesView UI component in Sources/views/PreferencesView.swift
-- [ ] T019 StickyWindow NSWindow hosting in Sources/views/StickyWindow.swift
-- [ ] T020 Implement GET /tasks endpoint in Sources/services/TaskService.swift
-- [ ] T021 Implement POST /tasks endpoint in Sources/services/TaskService.swift
-- [ ] T022 Implement PUT /tasks/{id} endpoint in Sources/services/TaskService.swift
-- [ ] T023 Implement DELETE /tasks/{id} endpoint in Sources/services/TaskService.swift
+- [x] T012 [P] Task model in Sources/models/Task.swift
+- [x] T013 [P] Sticky model in Sources/models/Sticky.swift
+- [x] T014 [P] Configuration model in Sources/models/Configuration.swift
+- [x] T015 TaskService for TaskWarrior integration in Sources/services/TaskService.swift
+- [x] T016 DataManager for persistence in Sources/services/DataManager.swift
+- [x] T017 StickyView UI component in Sources/views/StickyView.swift
+- [x] T018 PreferencesView UI component in Sources/views/PreferencesView.swift
+- [x] T019 StickyWindow NSWindow hosting in Sources/views/StickyWindow.swift
+- [x] T020 Implement GET /tasks endpoint in Sources/services/TaskService.swift
+- [x] T021 Implement POST /tasks endpoint in Sources/services/TaskService.swift
+- [x] T022 Implement PUT /tasks/{id} endpoint in Sources/services/TaskService.swift
+- [x] T023 Implement DELETE /tasks/{id} endpoint in Sources/services/TaskService.swift
 
 ## Phase 3.4: Integration
 - [ ] T024 Connect TaskService to TaskWarrior CLI

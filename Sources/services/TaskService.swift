@@ -7,31 +7,140 @@
 
 import Foundation
 
+@MainActor
 class TaskService {
-    // Placeholder implementation - will be replaced with actual TaskWarrior integration
+    private let process = Process()
+    private let pipe = Pipe()
 
-    func getTasks(filter: String?, sort: String?) async throws -> [Task] {
-        // TODO: Implement TaskWarrior CLI integration
-        throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    func getTasks(filter: String?, sort: String?) async throws -> [TWTask] {
+        var arguments = ["export"]
+        if let filter = filter {
+            arguments.append(filter)
+        }
+        let output = try await runTaskCommand(arguments: arguments)
+        return try parseTasks(from: output)
     }
 
-    func getTask(id: String) async throws -> Task {
-        // TODO: Implement TaskWarrior CLI integration
-        throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    func getTask(id: String) async throws -> TWTask {
+        let output = try await runTaskCommand(arguments: ["export", id])
+        let tasks = try parseTasks(from: output)
+        guard let task = tasks.first else {
+            throw NSError(domain: "TaskService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Task not found"])
+        }
+        return task
     }
 
-    func createTask(_ input: TaskInput) async throws -> Task {
-        // TODO: Implement TaskWarrior CLI integration
-        throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    func createTask(_ input: TaskInput) async throws -> TWTask {
+        var arguments = ["add", input.title]
+        if let project = input.project {
+            arguments.append("project:\(project)")
+        }
+        if let due = input.due {
+            let formatter = ISO8601DateFormatter()
+            arguments.append("due:\(formatter.string(from: due))")
+        }
+        if let priority = input.priority {
+            arguments.append("priority:\(priority)")
+        }
+        for tag in input.tags ?? [] {
+            arguments.append("+\(tag)")
+        }
+        
+        _ = try await runTaskCommand(arguments: arguments)
+        
+        // Get the newly created task by finding the most recent one
+        // This is a simplification; in practice, you might need to parse the output or use UUID
+        let tasks = try await getTasks(filter: nil, sort: nil)
+        return tasks.last!
     }
 
-    func updateTask(id: String, update: TaskUpdate) async throws -> Task {
-        // TODO: Implement TaskWarrior CLI integration
-        throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+    func updateTask(id: String, update: TaskUpdate) async throws -> TWTask {
+        var arguments = [id, "modify"]
+        if let title = update.title {
+            arguments.append(title)
+        }
+        if let project = update.project {
+            arguments.append("project:\(project)")
+        }
+        if let status = update.status {
+            arguments.append("status:\(status)")
+        }
+        if let priority = update.priority {
+            arguments.append("priority:\(priority)")
+        }
+        if let comment = update.comment {
+            arguments.append("annotate:\(comment)")
+        }
+        
+        _ = try await runTaskCommand(arguments: arguments)
+        return try await getTask(id: id)
     }
 
     func deleteTask(id: String) async throws {
-        // TODO: Implement TaskWarrior CLI integration
-        throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
+        _ = try await runTaskCommand(arguments: [id, "delete", "--yes"])
+    }
+
+    private func runTaskCommand(arguments: [String]) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                let pipe = Pipe()
+                
+                process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/task")
+                process.arguments = arguments
+                process.standardOutput = pipe
+                process.standardError = pipe
+                
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? ""
+                    
+                    if process.terminationStatus != 0 {
+                        let error = NSError(domain: "TaskService", code: Int(process.terminationStatus), 
+                                           userInfo: [NSLocalizedDescriptionKey: "TaskWarrior command failed: \(output)"])
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: output)
+                    }
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func parseTasks(from jsonString: String) throws -> [TWTask] {
+        let data = jsonString.data(using: .utf8)!
+        let jsonArray = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
+        
+        return jsonArray.map { dict in
+            let id = String(dict["id"] as! Int)
+            let title = dict["description"] as! String
+            let project = dict["project"] as? String
+            let status = dict["status"] as! String
+            let tags = dict["tags"] as? [String] ?? []
+            
+            // Parse dates
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+            
+            var age: Date? = nil
+            if let entry = dict["entry"] as? String {
+                age = dateFormatter.date(from: entry)
+            }
+            
+            var due: Date? = nil
+            if let dueStr = dict["due"] as? String {
+                due = dateFormatter.date(from: dueStr)
+            }
+            
+            let priority = dict["priority"] as? String
+            
+            return TWTask(id: id, title: title, project: project, age: age, due: due, 
+                         priority: priority, status: status, tags: tags, comment: nil)
+        }
     }
 }

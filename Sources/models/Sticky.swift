@@ -8,7 +8,7 @@
 import Foundation
 import CoreGraphics
 
-struct Sticky {
+struct Sticky: Codable {
     let id: UUID
     var title: String
     var position: CGPoint

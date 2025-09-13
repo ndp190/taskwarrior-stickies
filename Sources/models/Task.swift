@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Task {
+struct TWTask: Codable, Identifiable {
     let id: String
     var title: String
     var project: String?
