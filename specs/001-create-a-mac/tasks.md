@@ -37,38 +37,38 @@
 - Include exact file paths in descriptions
 
 ## Path Conventions
-- **Single project**: `src/`, `tests/` at repository root
+- **Single project**: `Sources/`, `Tests/` at repository root
 - Paths assume single Mac app project structure
 
 ## Phase 3.1: Setup
-- [ ] T001 Create Xcode project structure per implementation plan
-- [ ] T002 Initialize Swift project with SwiftUI dependencies
-- [ ] T003 [P] Configure SwiftLint for code formatting
+- [x] T001 Create Xcode project structure per implementation plan
+- [x] T002 Initialize Swift project with SwiftUI dependencies
+- [x] T003 [P] Configure SwiftLint for code formatting
 
 ## Phase 3.2: Tests First (TDD) ⚠️ MUST COMPLETE BEFORE 3.3
 **CRITICAL: These tests MUST be written and MUST FAIL before ANY implementation**
-- [ ] T004 [P] Contract test GET /tasks in tests/contract/test_get_tasks.swift
-- [ ] T005 [P] Contract test POST /tasks in tests/contract/test_post_task.swift
-- [ ] T006 [P] Contract test PUT /tasks/{id} in tests/contract/test_put_task.swift
-- [ ] T007 [P] Contract test DELETE /tasks/{id} in tests/contract/test_delete_task.swift
-- [ ] T008 [P] Integration test create sticky and load tasks in tests/integration/test_create_sticky.swift
-- [ ] T009 [P] Integration test edit task title in tests/integration/test_edit_task.swift
-- [ ] T010 [P] Integration test set transparency and always-on-top in tests/integration/test_window_settings.swift
-- [ ] T011 [P] Integration test filter and sort tasks in tests/integration/test_filter_sort.swift
+- [x] T004 [P] Contract test GET /tasks in Tests/contract/test_get_tasks.swift
+- [x] T005 [P] Contract test POST /tasks in Tests/contract/test_post_task.swift
+- [x] T006 [P] Contract test PUT /tasks/{id} in Tests/contract/test_put_task.swift
+- [x] T007 [P] Contract test DELETE /tasks/{id} in Tests/contract/test_delete_task.swift
+- [x] T008 [P] Integration test create sticky and load tasks in Tests/integration/test_create_sticky.swift
+- [x] T009 [P] Integration test edit task title in Tests/integration/test_edit_task.swift
+- [x] T010 [P] Integration test set transparency and always-on-top in Tests/integration/test_window_settings.swift
+- [x] T011 [P] Integration test filter and sort tasks in Tests/integration/test_filter_sort.swift
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
-- [ ] T012 [P] Task model in src/models/Task.swift
-- [ ] T013 [P] Sticky model in src/models/Sticky.swift
-- [ ] T014 [P] Configuration model in src/models/Configuration.swift
-- [ ] T015 TaskService for TaskWarrior integration in src/services/TaskService.swift
-- [ ] T016 DataManager for persistence in src/services/DataManager.swift
-- [ ] T017 StickyView UI component in src/views/StickyView.swift
-- [ ] T018 PreferencesView UI component in src/views/PreferencesView.swift
-- [ ] T019 StickyWindow NSWindow hosting in src/views/StickyWindow.swift
-- [ ] T020 Implement GET /tasks endpoint in src/services/TaskService.swift
-- [ ] T021 Implement POST /tasks endpoint in src/services/TaskService.swift
-- [ ] T022 Implement PUT /tasks/{id} endpoint in src/services/TaskService.swift
-- [ ] T023 Implement DELETE /tasks/{id} endpoint in src/services/TaskService.swift
+- [ ] T012 [P] Task model in Sources/models/Task.swift
+- [ ] T013 [P] Sticky model in Sources/models/Sticky.swift
+- [ ] T014 [P] Configuration model in Sources/models/Configuration.swift
+- [ ] T015 TaskService for TaskWarrior integration in Sources/services/TaskService.swift
+- [ ] T016 DataManager for persistence in Sources/services/DataManager.swift
+- [ ] T017 StickyView UI component in Sources/views/StickyView.swift
+- [ ] T018 PreferencesView UI component in Sources/views/PreferencesView.swift
+- [ ] T019 StickyWindow NSWindow hosting in Sources/views/StickyWindow.swift
+- [ ] T020 Implement GET /tasks endpoint in Sources/services/TaskService.swift
+- [ ] T021 Implement POST /tasks endpoint in Sources/services/TaskService.swift
+- [ ] T022 Implement PUT /tasks/{id} endpoint in Sources/services/TaskService.swift
+- [ ] T023 Implement DELETE /tasks/{id} endpoint in Sources/services/TaskService.swift
 
 ## Phase 3.4: Integration
 - [ ] T024 Connect TaskService to TaskWarrior CLI
@@ -77,8 +77,8 @@
 - [ ] T027 Implement background task sync
 
 ## Phase 3.5: Polish
-- [ ] T028 [P] Unit tests for models in tests/unit/test_models.swift
-- [ ] T029 [P] Unit tests for services in tests/unit/test_services.swift
+- [ ] T028 [P] Unit tests for models in Tests/unit/test_models.swift
+- [ ] T029 [P] Unit tests for services in Tests/unit/test_services.swift
 - [ ] T030 Performance tests (<100ms queries)
 - [ ] T031 [P] Update README.md with usage
 - [ ] T032 Run quickstart validation
@@ -94,16 +94,16 @@
 ## Parallel Example
 ```
 # Launch T004-T007 together:
-Task: "Contract test GET /tasks in tests/contract/test_get_tasks.swift"
-Task: "Contract test POST /tasks in tests/contract/test_post_task.swift"
-Task: "Contract test PUT /tasks/{id} in tests/contract/test_put_task.swift"
-Task: "Contract test DELETE /tasks/{id} in tests/contract/test_delete_task.swift"
+Task: "Contract test GET /tasks in Tests/contract/test_get_tasks.swift"
+Task: "Contract test POST /tasks in Tests/contract/test_post_task.swift"
+Task: "Contract test PUT /tasks/{id} in Tests/contract/test_put_task.swift"
+Task: "Contract test DELETE /tasks/{id} in Tests/contract/test_delete_task.swift"
 
 # Launch T008-T011 together:
-Task: "Integration test create sticky and load tasks in tests/integration/test_create_sticky.swift"
-Task: "Integration test edit task title in tests/integration/test_edit_task.swift"
-Task: "Integration test set transparency and always-on-top in tests/integration/test_window_settings.swift"
-Task: "Integration test filter and sort tasks in tests/integration/test_filter_sort.swift"
+Task: "Integration test create sticky and load tasks in Tests/integration/test_create_sticky.swift"
+Task: "Integration test edit task title in Tests/integration/test_edit_task.swift"
+Task: "Integration test set transparency and always-on-top in Tests/integration/test_window_settings.swift"
+Task: "Integration test filter and sort tasks in Tests/integration/test_filter_sort.swift"
 ```
 
 ## Notes
