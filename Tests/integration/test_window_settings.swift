@@ -11,10 +11,10 @@ import XCTest
 final class WindowSettingsIntegrationTests: XCTestCase {
     var dataManager: DataManager!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         // DataManager will be implemented later - these tests will fail
-        dataManager = DataManager()
+        dataManager = await DataManager()
     }
 
     override func tearDown() {
@@ -83,13 +83,13 @@ final class WindowSettingsIntegrationTests: XCTestCase {
             id: sticky.id,
             transparency: 0.7
         )
-        let alwaysOnTopUpdated = try await dataManager.updateStickyAlwaysOnTop(
+        _ = try await dataManager.updateStickyAlwaysOnTop(
             id: updatedSticky.id,
             alwaysOnTop: false
         )
 
         // Simulate app restart by creating new DataManager
-        let newDataManager = DataManager()
+        let newDataManager = await DataManager()
         let loadedSticky = try await newDataManager.getSticky(id: sticky.id)
 
         // Then

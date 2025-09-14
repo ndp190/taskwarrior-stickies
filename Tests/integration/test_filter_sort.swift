@@ -11,17 +11,51 @@ import XCTest
 final class FilterSortIntegrationTests: XCTestCase {
     var taskService: TaskService!
     var dataManager: DataManager!
+    var testTaskDataPath: String!
 
-    override func setUp() {
-        super.setUp()
-        // Services will be implemented later - these tests will fail
-        taskService = TaskService()
-        dataManager = DataManager()
+    override func setUp() async throws {
+        try await super.setUp()
+        
+        // Create a temporary directory for test TaskWarrior data
+        let tempDir = NSTemporaryDirectory()
+        testTaskDataPath = tempDir + "taskwarrior_test_data_\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: testTaskDataPath, withIntermediateDirectories: true)
+        
+        let realExecutor = RealTaskCommandExecutor(taskDataPath: testTaskDataPath)
+        taskService = TaskService(executor: realExecutor)
+        dataManager = await DataManager()
+        
+        // Skip all tests if TaskWarrior is not available
+        if !isTaskWarriorAvailable() {
+            throw XCTSkip("TaskWarrior is not available in test environment")
+        }
+    }
+    
+    private func isTaskWarriorAvailable() -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/task")
+        process.arguments = ["--version"]
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 
     override func tearDown() {
         taskService = nil
         dataManager = nil
+        if let testTaskDataPath = testTaskDataPath {
+            try? FileManager.default.removeItem(atPath: testTaskDataPath)
+        }
+        testTaskDataPath = nil
         super.tearDown()
     }
 

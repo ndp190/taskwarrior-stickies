@@ -7,22 +7,24 @@
 
 import Foundation
 
-@MainActor
-class TaskService {
-    private let process = Process()
-    private let pipe = Pipe()
+class TaskService: @unchecked Sendable {
+    private let executor: TaskCommandExecutor
+
+    init(executor: TaskCommandExecutor = RealTaskCommandExecutor()) {
+        self.executor = executor
+    }
 
     func getTasks(filter: String?, sort: String?) async throws -> [TWTask] {
         var arguments = ["export"]
         if let filter = filter {
             arguments.append(filter)
         }
-        let output = try await runTaskCommand(arguments: arguments)
+        let output = try await executor.execute(arguments: arguments)
         return try parseTasks(from: output)
     }
 
     func getTask(id: String) async throws -> TWTask {
-        let output = try await runTaskCommand(arguments: ["export", id])
+        let output = try await executor.execute(arguments: ["export", id])
         let tasks = try parseTasks(from: output)
         guard let task = tasks.first else {
             throw NSError(domain: "TaskService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Task not found"])
@@ -46,7 +48,7 @@ class TaskService {
             arguments.append("+\(tag)")
         }
         
-        _ = try await runTaskCommand(arguments: arguments)
+        _ = try await executor.execute(arguments: arguments)
         
         // Get the newly created task by finding the most recent one
         // This is a simplification; in practice, you might need to parse the output or use UUID
@@ -72,58 +74,40 @@ class TaskService {
             arguments.append("annotate:\(comment)")
         }
         
-        _ = try await runTaskCommand(arguments: arguments)
+        _ = try await executor.execute(arguments: arguments)
         return try await getTask(id: id)
     }
 
     func deleteTask(id: String) async throws {
-        _ = try await runTaskCommand(arguments: [id, "delete", "--yes"])
-    }
-
-    private func runTaskCommand(arguments: [String]) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let process = Process()
-                let pipe = Pipe()
-                
-                process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/task")
-                process.arguments = arguments
-                process.standardOutput = pipe
-                process.standardError = pipe
-                
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-                    
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    let output = String(data: data, encoding: .utf8) ?? ""
-                    
-                    if process.terminationStatus != 0 {
-                        let error = NSError(domain: "TaskService", code: Int(process.terminationStatus), 
-                                           userInfo: [NSLocalizedDescriptionKey: "TaskWarrior command failed: \(output)"])
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: output)
-                    }
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
+        _ = try await executor.execute(arguments: [id, "delete", "--yes"])
     }
 
     private func parseTasks(from jsonString: String) throws -> [TWTask] {
         let data = jsonString.data(using: .utf8)!
         let jsonArray = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
         
-        return jsonArray.map { dict in
-            let id = String(dict["id"] as! Int)
-            let title = dict["description"] as! String
+        return jsonArray.compactMap { dict in
+            // Safely extract id - could be Int or String
+            guard let idValue = dict["id"] else { return nil }
+            let id: String
+            if let intId = idValue as? Int {
+                id = String(intId)
+            } else if let stringId = idValue as? String {
+                id = stringId
+            } else {
+                return nil
+            }
+            
+            // Safely extract required fields
+            guard let title = dict["description"] as? String,
+                  let status = dict["status"] as? String else {
+                return nil
+            }
+            
             let project = dict["project"] as? String
-            let status = dict["status"] as! String
             let tags = dict["tags"] as? [String] ?? []
             
-            // Parse dates
+            // Parse dates with better error handling
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
             

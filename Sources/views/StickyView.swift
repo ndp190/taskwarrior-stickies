@@ -12,9 +12,9 @@ struct StickyView: View {
     @State private var showingPreferences = false
     private let dataManager: DataManager
     
-    init(sticky: Sticky, taskService: TaskService, dataManager: DataManager) {
-        _viewModel = StateObject(wrappedValue: StickyViewModel(sticky: sticky, taskService: taskService, dataManager: dataManager))
-        self.dataManager = dataManager
+    init(viewModel: StickyViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.dataManager = viewModel.dataManager
     }
     
     var body: some View {
@@ -103,8 +103,8 @@ class StickyViewModel: ObservableObject {
     @Published var tasks: [TWTask] = []
     @Published var selectedTaskIds: Set<String> = []
     
-    private let taskService: TaskService
-    private let dataManager: DataManager
+    let taskService: TaskService
+    let dataManager: DataManager
     
     var filteredTasks: [TWTask] {
         var filtered = tasks
@@ -157,6 +157,10 @@ class StickyViewModel: ObservableObject {
         } catch {
             print("Failed to load tasks: \(error)")
         }
+    }
+    
+    func refreshTasks() async {
+        await loadTasks()
     }
     
     func updateTaskTitle(_ taskId: String, newTitle: String) async {

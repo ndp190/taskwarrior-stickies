@@ -25,25 +25,68 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windows: [StickyWindow] = []
     let taskService = TaskService()
     let dataManager = DataManager()
+    private var syncTimer: Timer?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Create initial sticky
-        createNewSticky()
+        // Start background sync timer
+        startBackgroundSync()
+        
+        // Load existing stickies from CoreData
+        Task {
+            do {
+                let stickies = try await dataManager.getAllStickies()
+                if stickies.isEmpty {
+                    // Create initial sticky if none exist
+                    createNewSticky()
+                } else {
+                    // Restore existing stickies
+                    for sticky in stickies {
+                        createWindow(for: sticky)
+                    }
+                }
+            } catch {
+                print("Failed to load stickies: \(error)")
+                // Create initial sticky as fallback
+                createNewSticky()
+            }
+        }
+    }
+    
+    func applicationWillTerminate(_ notification: Notification) {
+        syncTimer?.invalidate()
+    }
+    
+    private func startBackgroundSync() {
+        // Sync every 30 seconds (configurable)
+        let interval = Configuration.default.syncInterval
+        syncTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { [weak self] in
+                await self?.performBackgroundSync()
+            }
+        }
+    }
+    
+    private func performBackgroundSync() async {
+        for window in windows {
+            await window.refreshTasks()
+        }
     }
     
     func createNewSticky() {
-        DispatchQueue.main.async {
-            Task {
-                do {
-                    let sticky = try await self.dataManager.createSticky(title: "New Sticky")
-                    let window = StickyWindow(sticky: sticky, taskService: self.taskService, dataManager: self.dataManager)
-                    self.windows.append(window)
-                    window.makeKeyAndOrderFront(nil)
-                } catch {
-                    print("Failed to create sticky: \(error)")
-                }
+        Task {
+            do {
+                let sticky = try await dataManager.createSticky(title: "New Sticky")
+                createWindow(for: sticky)
+            } catch {
+                print("Failed to create sticky: \(error)")
             }
         }
+    }
+    
+    private func createWindow(for sticky: Sticky) {
+        let window = StickyWindow(sticky: sticky, taskService: taskService, dataManager: dataManager)
+        windows.append(window)
+        window.makeKeyAndOrderFront(nil)
     }
 }
 

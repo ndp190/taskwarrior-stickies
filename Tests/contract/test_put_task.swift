@@ -11,10 +11,33 @@ import XCTest
 final class PutTaskContractTests: XCTestCase {
     var taskService: TaskService!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         // TaskService will be implemented later - this test will fail
         taskService = TaskService()
+        
+        // Skip all tests if TaskWarrior is not available
+        if !isTaskWarriorAvailable() {
+            throw XCTSkip("TaskWarrior is not available in test environment")
+        }
+    }
+    
+    private func isTaskWarriorAvailable() -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/task")
+        process.arguments = ["--version"]
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 
     override func tearDown() {

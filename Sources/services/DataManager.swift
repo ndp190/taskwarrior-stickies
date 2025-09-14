@@ -7,11 +7,16 @@
 
 import Foundation
 import CoreGraphics
+import CoreData
 
 @MainActor
 class DataManager {
-    private let userDefaults = UserDefaults.standard
-    private let stickiesKey = "stickies"
+    private let coreDataStack = CoreDataStack.shared
+    private let viewContext: NSManagedObjectContext
+    
+    init() {
+        self.viewContext = coreDataStack.viewContext
+    }
     
     func createSticky(title: String, settings: StickySettings? = nil) async throws -> Sticky {
         let id = UUID()
@@ -33,11 +38,21 @@ class DataManager {
     }
 
     func getSticky(id: UUID) async throws -> Sticky {
-        let stickies = try await loadStickies()
-        guard let sticky = stickies.first(where: { $0.id == id }) else {
+        let fetchRequest = NSFetchRequest<StickyEntity>(entityName: "StickyEntity")
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        let entities = try viewContext.fetch(fetchRequest)
+        guard let entity = entities.first else {
             throw NSError(domain: "DataManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Sticky not found"])
         }
-        return sticky
+        
+        return entity.toSticky()
+    }
+
+    func getAllStickies() async throws -> [Sticky] {
+        let fetchRequest = NSFetchRequest<StickyEntity>(entityName: "StickyEntity")
+        let entities = try viewContext.fetch(fetchRequest)
+        return entities.map { $0.toSticky() }
     }
 
     func updateStickyTransparency(id: UUID, transparency: Double) async throws -> Sticky {
@@ -80,26 +95,31 @@ class DataManager {
         return sticky
     }
 
-    private func loadStickies() async throws -> [Sticky] {
-        guard let data = userDefaults.data(forKey: stickiesKey) else {
-            return []
+    func deleteSticky(id: UUID) async throws {
+        let fetchRequest = NSFetchRequest<StickyEntity>(entityName: "StickyEntity")
+        fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        
+        let entities = try viewContext.fetch(fetchRequest)
+        for entity in entities {
+            viewContext.delete(entity)
         }
         
-        let decoder = JSONDecoder()
-        return try decoder.decode([Sticky].self, from: data)
+        try viewContext.save()
     }
 
     private func saveSticky(_ sticky: Sticky) async throws {
-        var stickies = try await loadStickies()
+        // Delete existing entity if it exists
+        let fetchRequest = NSFetchRequest<StickyEntity>(entityName: "StickyEntity")
+        fetchRequest.predicate = NSPredicate(format: "id == %@", sticky.id as CVarArg)
         
-        if let index = stickies.firstIndex(where: { $0.id == sticky.id }) {
-            stickies[index] = sticky
-        } else {
-            stickies.append(sticky)
+        let existingEntities = try viewContext.fetch(fetchRequest)
+        for entity in existingEntities {
+            viewContext.delete(entity)
         }
         
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(stickies)
-        userDefaults.set(data, forKey: stickiesKey)
+        // Create new entity
+        _ = StickyEntity.fromSticky(sticky, context: viewContext)
+        
+        try viewContext.save()
     }
 }

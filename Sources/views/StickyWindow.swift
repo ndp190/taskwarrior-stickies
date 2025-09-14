@@ -12,6 +12,7 @@ class StickyWindow: NSWindow {
     private let sticky: Sticky
     private let taskService: TaskService
     private let dataManager: DataManager
+    private var viewModel: StickyViewModel?
     
     init(sticky: Sticky, taskService: TaskService, dataManager: DataManager) {
         self.sticky = sticky
@@ -31,7 +32,10 @@ class StickyWindow: NSWindow {
         self.isOpaque = false
         self.backgroundColor = NSColor.clear
         
-        let hostingView = NSHostingView(rootView: StickyView(sticky: sticky, taskService: taskService, dataManager: dataManager))
+        let viewModel = StickyViewModel(sticky: sticky, taskService: taskService, dataManager: dataManager)
+        self.viewModel = viewModel
+        
+        let hostingView = NSHostingView(rootView: StickyView(viewModel: viewModel))
         self.contentView = hostingView
         
         // Observe window state changes
@@ -88,6 +92,10 @@ class StickyWindow: NSWindow {
     
     func updateAlwaysOnTop(_ alwaysOnTop: Bool) {
         self.level = alwaysOnTop ? .floating : .normal
+    }
+    
+    func refreshTasks() async {
+        await viewModel?.refreshTasks()
     }
     
     deinit {

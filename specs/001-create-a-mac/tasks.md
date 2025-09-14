@@ -71,10 +71,10 @@
 - [x] T023 Implement DELETE /tasks/{id} endpoint in Sources/services/TaskService.swift
 
 ## Phase 3.4: Integration
-- [ ] T024 Connect TaskService to TaskWarrior CLI
-- [ ] T025 Integrate DataManager with CoreData
-- [ ] T026 Add window state persistence
-- [ ] T027 Implement background task sync
+- [x] T024 Connect TaskService to TaskWarrior CLI
+- [x] T025 Integrate DataManager with CoreData
+- [x] T026 Add window state persistence
+- [x] T027 Implement background task sync
 
 ## Phase 3.5: Polish
 - [ ] T028 [P] Unit tests for models in Tests/unit/test_models.swift
