@@ -8,7 +8,7 @@
 import Foundation
 
 struct TWTask: Codable, Identifiable {
-    let id: String
+    let uuid: String
     var title: String
     var project: String?
     var age: Date?
@@ -17,6 +17,8 @@ struct TWTask: Codable, Identifiable {
     var status: String
     var tags: [String]
     var comment: String?
+    
+    var id: String { uuid } // For Identifiable conformance
 }
 
 struct TaskInput {

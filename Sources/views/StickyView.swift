@@ -37,8 +37,8 @@ struct StickyView: View {
             
             // Tasks table
             Table(viewModel.filteredTasks, selection: $viewModel.selectedTaskIds) {
-                if viewModel.sticky.visibleColumns.contains("id") {
-                    TableColumn("ID", value: \.id)
+                if viewModel.sticky.visibleColumns.contains("uuid") {
+                    TableColumn("ID", value: \.uuid)
                         .width(min: 50, ideal: 60)
                 }
                 
@@ -47,7 +47,7 @@ struct StickyView: View {
                         get: { task.title },
                         set: { newTitle in
                             Task {
-                                await viewModel.updateTaskTitle(task.id, newTitle: newTitle)
+                                await viewModel.updateTaskTitle(task.uuid, newTitle: newTitle)
                             }
                         }
                     ))
@@ -163,9 +163,9 @@ class StickyViewModel: ObservableObject {
         await loadTasks()
     }
     
-    func updateTaskTitle(_ taskId: String, newTitle: String) async {
+    func updateTaskTitle(_ taskUuid: String, newTitle: String) async {
         do {
-            _ = try await taskService.updateTask(id: taskId, update: TaskUpdate(title: newTitle))
+            _ = try await taskService.updateTask(uuid: taskUuid, update: TaskUpdate(title: newTitle))
             await loadTasks() // Reload to reflect changes
         } catch {
             print("Failed to update task: \(error)")

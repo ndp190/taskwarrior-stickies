@@ -23,8 +23,8 @@ class TaskService: @unchecked Sendable {
         return try parseTasks(from: output)
     }
 
-    func getTask(id: String) async throws -> TWTask {
-        let output = try await executor.execute(arguments: ["export", id])
+    func getTask(uuid: String) async throws -> TWTask {
+        let output = try await executor.execute(arguments: ["export", "uuid:\(uuid)"])
         let tasks = try parseTasks(from: output)
         guard let task = tasks.first else {
             throw NSError(domain: "TaskService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Task not found"])
@@ -56,8 +56,8 @@ class TaskService: @unchecked Sendable {
         return tasks.last!
     }
 
-    func updateTask(id: String, update: TaskUpdate) async throws -> TWTask {
-        var arguments = [id, "modify"]
+    func updateTask(uuid: String, update: TaskUpdate) async throws -> TWTask {
+        var arguments = ["uuid:\(uuid)", "modify"]
         if let title = update.title {
             arguments.append(title)
         }
@@ -75,11 +75,11 @@ class TaskService: @unchecked Sendable {
         }
         
         _ = try await executor.execute(arguments: arguments)
-        return try await getTask(id: id)
+        return try await getTask(uuid: uuid)
     }
 
-    func deleteTask(id: String) async throws {
-        _ = try await executor.execute(arguments: [id, "delete", "--yes"])
+    func deleteTask(uuid: String) async throws {
+        _ = try await executor.execute(arguments: ["uuid:\(uuid)", "delete", "--yes"])
     }
 
     private func parseTasks(from jsonString: String) throws -> [TWTask] {
@@ -87,16 +87,8 @@ class TaskService: @unchecked Sendable {
         let jsonArray = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
         
         return jsonArray.compactMap { dict in
-            // Safely extract id - could be Int or String
-            guard let idValue = dict["id"] else { return nil }
-            let id: String
-            if let intId = idValue as? Int {
-                id = String(intId)
-            } else if let stringId = idValue as? String {
-                id = stringId
-            } else {
-                return nil
-            }
+            // Extract uuid (primary identifier)
+            guard let uuid = dict["uuid"] as? String else { return nil }
             
             // Safely extract required fields
             guard let title = dict["description"] as? String,
@@ -123,7 +115,7 @@ class TaskService: @unchecked Sendable {
             
             let priority = dict["priority"] as? String
             
-            return TWTask(id: id, title: title, project: project, age: age, due: due, 
+            return TWTask(uuid: uuid, title: title, project: project, age: age, due: due, 
                          priority: priority, status: status, tags: tags, comment: nil)
         }
     }

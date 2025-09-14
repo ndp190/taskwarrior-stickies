@@ -53,11 +53,11 @@ final class TaskServiceUnitTests: XCTestCase {
         mockExecutor.mockOutputs = ["[]"]
 
         // When
-        _ = try await taskService.getTask(id: "123")
+        _ = try await taskService.getTask(uuid: "12345678-1234-1234-1234-123456789abc")
 
         // Then
         XCTAssertEqual(mockExecutor.executedCommands.count, 1)
-        XCTAssertEqual(mockExecutor.executedCommands[0], ["export", "123"])
+        XCTAssertEqual(mockExecutor.executedCommands[0], ["export", "uuid:12345678-1234-1234-1234-123456789abc"])
     }
 
     func testCreateTaskCommand() async throws {
@@ -93,12 +93,12 @@ final class TaskServiceUnitTests: XCTestCase {
 
         // When
         let update = TaskUpdate(title: "Updated Title", project: "new-project", status: "completed", priority: "L", comment: "Updated comment")
-        _ = try await taskService.updateTask(id: "123", update: update)
+        _ = try await taskService.updateTask(uuid: "12345678-1234-1234-1234-123456789abc", update: update)
 
         // Then
         XCTAssertEqual(mockExecutor.executedCommands.count, 2)
-        XCTAssertEqual(mockExecutor.executedCommands[0], ["123", "modify", "Updated Title", "project:new-project", "status:completed", "priority:L", "annotate:Updated comment"])
-        XCTAssertEqual(mockExecutor.executedCommands[1], ["export", "123"])
+        XCTAssertEqual(mockExecutor.executedCommands[0], ["uuid:12345678-1234-1234-1234-123456789abc", "modify", "Updated Title", "project:new-project", "status:completed", "priority:L", "annotate:Updated comment"])
+        XCTAssertEqual(mockExecutor.executedCommands[1], ["export", "uuid:12345678-1234-1234-1234-123456789abc"])
     }
 
     func testUpdateTaskPartialCommand() async throws {
@@ -107,11 +107,11 @@ final class TaskServiceUnitTests: XCTestCase {
 
         // When
         let update = TaskUpdate(title: "Only Title")
-        _ = try await taskService.updateTask(id: "456", update: update)
+        _ = try await taskService.updateTask(uuid: "12345678-1234-1234-1234-123456789abc", update: update)
 
         // Then
         XCTAssertEqual(mockExecutor.executedCommands.count, 2)
-        XCTAssertEqual(mockExecutor.executedCommands[0], ["456", "modify", "Only Title"])
+        XCTAssertEqual(mockExecutor.executedCommands[0], ["uuid:12345678-1234-1234-1234-123456789abc", "modify", "Only Title"])
     }
 
     func testDeleteTaskCommand() async throws {
@@ -119,10 +119,10 @@ final class TaskServiceUnitTests: XCTestCase {
         mockExecutor.mockOutputs = [""]
 
         // When
-        try await taskService.deleteTask(id: "789")
+        try await taskService.deleteTask(uuid: "12345678-1234-1234-1234-123456789abc")
 
         // Then
         XCTAssertEqual(mockExecutor.executedCommands.count, 1)
-        XCTAssertEqual(mockExecutor.executedCommands[0], ["789", "delete", "--yes"])
+        XCTAssertEqual(mockExecutor.executedCommands[0], ["uuid:12345678-1234-1234-1234-123456789abc", "delete", "--yes"])
     }
 }

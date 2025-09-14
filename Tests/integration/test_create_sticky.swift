@@ -11,24 +11,14 @@ import XCTest
 final class CreateStickyIntegrationTests: XCTestCase {
     var dataManager: DataManager!
     var taskService: TaskService!
-    var testTaskDataPath: String!
+    var mockExecutor: MockTaskCommandExecutor!
 
     override func setUp() async throws {
         try await super.setUp()
         
-        // Create a temporary directory for test TaskWarrior data
-        let tempDir = NSTemporaryDirectory()
-        testTaskDataPath = tempDir + "taskwarrior_test_data_\(UUID().uuidString)"
-        try FileManager.default.createDirectory(atPath: testTaskDataPath, withIntermediateDirectories: true)
-        
         dataManager = await DataManager()
-        let realExecutor = RealTaskCommandExecutor(taskDataPath: testTaskDataPath)
-        taskService = TaskService(executor: realExecutor)
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
     }
     
     private func isTaskWarriorAvailable() -> Bool {
@@ -52,10 +42,7 @@ final class CreateStickyIntegrationTests: XCTestCase {
     override func tearDown() {
         dataManager = nil
         taskService = nil
-        if let testTaskDataPath = testTaskDataPath {
-            try? FileManager.default.removeItem(atPath: testTaskDataPath)
-        }
-        testTaskDataPath = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
@@ -105,6 +92,18 @@ final class CreateStickyIntegrationTests: XCTestCase {
         // Given
         let stickyTitle = "Project Tasks"
         let filter = "project:development"
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Development Task",
+                "status": "pending",
+                "entry": "20250113T000000Z",
+                "project": "development"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = [mockResponse]
 
         // When
         let sticky = try await dataManager.createSticky(title: stickyTitle)

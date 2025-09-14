@@ -10,16 +10,12 @@ import XCTest
 
 final class PostTaskContractTests: XCTestCase {
     var taskService: TaskService!
+    var mockExecutor: MockTaskCommandExecutor!
 
     override func setUp() async throws {
         try await super.setUp()
-        // TaskService will be implemented later - this test will fail
-        taskService = TaskService()
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
     }
     
     private func isTaskWarriorAvailable() -> Bool {
@@ -42,12 +38,24 @@ final class PostTaskContractTests: XCTestCase {
 
     override func tearDown() {
         taskService = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
     func testCreateTaskWithMinimumFields() async throws {
         // Given
         let taskInput = TaskInput(title: "Test Task")
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Test Task",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse] // First for add, second for getTasks
 
         // When
         let createdTask = try await taskService.createTask(taskInput)
@@ -55,7 +63,7 @@ final class PostTaskContractTests: XCTestCase {
         // Then
         XCTAssertNotNil(createdTask)
         XCTAssertEqual(createdTask.title, "Test Task")
-        XCTAssertNotNil(createdTask.id)
+        XCTAssertNotNil(createdTask.uuid)
         XCTAssertEqual(createdTask.status, "pending")
     }
 
@@ -68,6 +76,20 @@ final class PostTaskContractTests: XCTestCase {
             priority: "H",
             tags: ["urgent", "important"]
         )
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Complete project",
+                "status": "pending",
+                "entry": "20250113T000000Z",
+                "project": "work",
+                "priority": "H",
+                "tags": ["urgent", "important"]
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse]
 
         // When
         let createdTask = try await taskService.createTask(taskInput)
@@ -85,6 +107,7 @@ final class PostTaskContractTests: XCTestCase {
     func testCreateTaskValidation() async throws {
         // Given - empty title should fail
         let invalidTaskInput = TaskInput(title: "")
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
@@ -99,12 +122,23 @@ final class PostTaskContractTests: XCTestCase {
     func testCreateTaskResponseFormat() async throws {
         // Given
         let taskInput = TaskInput(title: "Test Task")
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Test Task",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse]
 
         // When
         let createdTask = try await taskService.createTask(taskInput)
 
         // Then
-        XCTAssertNotNil(createdTask.id)
+        XCTAssertNotNil(createdTask.uuid)
         XCTAssertNotNil(createdTask.title)
         XCTAssertNotNil(createdTask.status)
         XCTAssertTrue(["pending", "completed"].contains(createdTask.status))

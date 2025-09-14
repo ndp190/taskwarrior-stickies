@@ -12,33 +12,19 @@ final class EditTaskIntegrationTests: XCTestCase {
     var taskService: TaskService!
     var dataManager: DataManager!
     var mockExecutor: MockTaskCommandExecutor!
-    var testTaskDataPath: String!
 
     override func setUp() async throws {
         try await super.setUp()
         
-        // Create a temporary directory for test TaskWarrior data
-        let tempDir = NSTemporaryDirectory()
-        testTaskDataPath = tempDir + "taskwarrior_test_data_\(UUID().uuidString)"
-        try FileManager.default.createDirectory(atPath: testTaskDataPath, withIntermediateDirectories: true)
-        
-        let realExecutor = RealTaskCommandExecutor(taskDataPath: testTaskDataPath)
-        taskService = TaskService(executor: realExecutor)
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
         dataManager = await DataManager()
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
     }
 
     override func tearDown() {
         taskService = nil
         dataManager = nil
-        if let testTaskDataPath = testTaskDataPath {
-            try? FileManager.default.removeItem(atPath: testTaskDataPath)
-        }
-        testTaskDataPath = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
@@ -46,6 +32,30 @@ final class EditTaskIntegrationTests: XCTestCase {
         // Given
         let originalTitle = "Original Task"
         let newTitle = "Updated Task Title"
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        
+        // Mock responses: first for createTask (add + getTasks), then for updateTask (modify + getTask)
+        let createResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "\(originalTitle)",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let updateResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "\(newTitle)",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", createResponse, "", updateResponse]
 
         // Create a task first
         let taskInput = TaskInput(title: originalTitle)
@@ -53,30 +63,65 @@ final class EditTaskIntegrationTests: XCTestCase {
 
         // When
         let update = TaskUpdate(title: newTitle)
-        let updatedTask = try await taskService.updateTask(id: createdTask.id, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: createdTask.uuid, update: update)
 
         // Then
         XCTAssertEqual(updatedTask.title, newTitle)
-        XCTAssertEqual(updatedTask.id, createdTask.id)
+        XCTAssertEqual(updatedTask.uuid, createdTask.uuid)
     }
 
     func testEditTaskInStickyView() async throws {
         // Given
         _ = try await dataManager.createSticky(title: "Test Sticky")
         let taskInput = TaskInput(title: "Task to Edit")
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        let newTitle = "Edited in Sticky View"
+        
+        // Mock responses
+        let createResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Task to Edit",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let updateResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "\(newTitle)",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let getTasksResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "\(newTitle)",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", createResponse, "", updateResponse, getTasksResponse]
+
         let createdTask = try await taskService.createTask(taskInput)
 
         // When - simulate editing in UI
-        let newTitle = "Edited in Sticky View"
         let update = TaskUpdate(title: newTitle)
-        let updatedTask = try await taskService.updateTask(id: createdTask.id, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: createdTask.uuid, update: update)
 
         // Then
         XCTAssertEqual(updatedTask.title, newTitle)
 
         // Verify the change is reflected when loading tasks for the sticky
         let tasks = try await taskService.getTasks(filter: nil, sort: nil)
-        let foundTask = tasks.first { $0.id == createdTask.id }
+        let foundTask = tasks.first { $0.uuid == createdTask.uuid }
         XCTAssertNotNil(foundTask)
         XCTAssertEqual(foundTask?.title, newTitle)
     }
@@ -84,6 +129,33 @@ final class EditTaskIntegrationTests: XCTestCase {
     func testEditMultipleTaskFields() async throws {
         // Given
         let taskInput = TaskInput(title: "Multi-field Task")
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        
+        // Mock responses
+        let createResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Multi-field Task",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let updateResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Updated Multi-field Task",
+                "status": "completed",
+                "entry": "20250113T000000Z",
+                "project": "new-project",
+                "priority": "H"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", createResponse, "", updateResponse]
+
         let createdTask = try await taskService.createTask(taskInput)
 
         // When
@@ -93,7 +165,7 @@ final class EditTaskIntegrationTests: XCTestCase {
             status: "completed",
             priority: "H"
         )
-        let updatedTask = try await taskService.updateTask(id: createdTask.id, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: createdTask.uuid, update: update)
 
         // Then
         XCTAssertEqual(updatedTask.title, "Updated Multi-field Task")
@@ -105,6 +177,21 @@ final class EditTaskIntegrationTests: XCTestCase {
     func testEditTaskValidation() async throws {
         // Given
         let taskInput = TaskInput(title: "Task to Validate")
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        
+        // Mock responses for create
+        let createResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Task to Validate",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", createResponse, ""]
+
         let createdTask = try await taskService.createTask(taskInput)
 
         // When - try to set empty title
@@ -112,7 +199,7 @@ final class EditTaskIntegrationTests: XCTestCase {
 
         // Then
         do {
-            _ = try await taskService.updateTask(id: createdTask.id, update: invalidUpdate)
+            _ = try await taskService.updateTask(uuid: createdTask.uuid, update: invalidUpdate)
             XCTFail("Expected validation error for empty title")
         } catch {
             // Expected to fail - validation will be implemented
@@ -122,12 +209,13 @@ final class EditTaskIntegrationTests: XCTestCase {
 
     func testEditNonExistentTask() async throws {
         // Given
-        let nonExistentId = "non-existent-task-id"
+        let nonExistentUuid = "12345678-1234-1234-1234-000000000000"
         let update = TaskUpdate(title: "Should not work")
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            _ = try await taskService.updateTask(id: nonExistentId, update: update)
+            _ = try await taskService.updateTask(uuid: nonExistentUuid, update: update)
             XCTFail("Expected error for editing non-existent task")
         } catch {
             // Expected to fail - error handling will be implemented
@@ -138,51 +226,56 @@ final class EditTaskIntegrationTests: XCTestCase {
     func testConcurrentTaskEdits() async throws {
         // Given
         let taskInput = TaskInput(title: "Concurrent Edit Task")
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        
+        // Mock responses
+        let createResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Concurrent Edit Task",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let updateResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Edit 1",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        let getTasksResponse = """
+        [
+            {
+                "uuid": "\(taskUuid)",
+                "description": "Edit 1",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", createResponse, "", updateResponse, getTasksResponse]
+
         let createdTask = try await taskService.createTask(taskInput)
 
         // When - simulate concurrent edits (simplified version)
         let update1 = TaskUpdate(title: "Edit 1")
         
         // Perform edits sequentially for now (concurrency testing can be more complex)
-        let result1 = try await taskService.updateTask(id: createdTask.id, update: update1)
+        let result1 = try await taskService.updateTask(uuid: createdTask.uuid, update: update1)
         
         // Then
         XCTAssertEqual(result1.title, "Edit 1")
         
         // Verify the task was updated
         let tasks = try await taskService.getTasks(filter: nil, sort: nil)
-        let foundTask = tasks.first { $0.id == createdTask.id }
+        let foundTask = tasks.first { $0.uuid == createdTask.uuid }
         XCTAssertNotNil(foundTask)
         XCTAssertEqual(foundTask?.title, "Edit 1")
-    }
-    
-    private func isTaskWarriorAvailable() -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/task")
-        process.arguments = ["--version"]
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        
-        do {
-            try process.run()
-            
-            // Wait for the process to complete with a timeout
-            let timeoutSeconds = 5.0
-            let startTime = Date()
-            
-            while process.isRunning {
-                if Date().timeIntervalSince(startTime) > timeoutSeconds {
-                    process.terminate()
-                    return false
-                }
-                Thread.sleep(forTimeInterval: 0.1)
-            }
-            
-            return process.terminationStatus == 0
-        } catch {
-            return false
-        }
     }
 }

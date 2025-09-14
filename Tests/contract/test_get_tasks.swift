@@ -10,16 +10,12 @@ import XCTest
 
 final class GetTasksContractTests: XCTestCase {
     var taskService: TaskService!
+    var mockExecutor: MockTaskCommandExecutor!
 
     override func setUp() async throws {
         try await super.setUp()
-        // TaskService will be implemented later - this test will fail
-        taskService = TaskService()
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
     }
     
     private func isTaskWarriorAvailable() -> Bool {
@@ -42,6 +38,7 @@ final class GetTasksContractTests: XCTestCase {
 
     override func tearDown() {
         taskService = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
@@ -49,6 +46,7 @@ final class GetTasksContractTests: XCTestCase {
         // Given
         let filter: String? = nil
         let sort: String? = nil
+        mockExecutor.mockOutputs = ["[]"]
 
         // When
         let tasks = try await taskService.getTasks(filter: filter, sort: sort)
@@ -62,6 +60,7 @@ final class GetTasksContractTests: XCTestCase {
         // Given
         let filter = "project:work"
         let sort: String? = nil
+        mockExecutor.mockOutputs = ["[]"]
 
         // When
         let tasks = try await taskService.getTasks(filter: filter, sort: sort)
@@ -78,6 +77,7 @@ final class GetTasksContractTests: XCTestCase {
         // Given
         let filter: String? = nil
         let sort = "priority"
+        mockExecutor.mockOutputs = ["[]"]
 
         // When
         let tasks = try await taskService.getTasks(filter: filter, sort: sort)
@@ -91,13 +91,26 @@ final class GetTasksContractTests: XCTestCase {
         // Given
         let filter: String? = nil
         let sort: String? = nil
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Test Task",
+                "status": "pending",
+                "entry": "20250113T000000Z",
+                "project": "test",
+                "priority": "M"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = [mockResponse]
 
         // When
         let tasks = try await taskService.getTasks(filter: filter, sort: sort)
 
         // Then
         for task in tasks {
-            XCTAssertNotNil(task.id)
+            XCTAssertNotNil(task.uuid)
             XCTAssertNotNil(task.title)
             XCTAssertNotNil(task.status)
             XCTAssertTrue(["pending", "completed"].contains(task.status))

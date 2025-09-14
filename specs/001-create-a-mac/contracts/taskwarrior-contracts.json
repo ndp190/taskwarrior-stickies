@@ -68,17 +68,18 @@
         }
       }
     },
-    "/tasks/{id}": {
+    "/tasks/{uuid}": {
       "put": {
         "summary": "Update task",
         "parameters": [
           {
-            "name": "id",
+            "name": "uuid",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Task UUID (preferred over deprecated id)"
           }
         ],
         "requestBody": {
@@ -107,12 +108,13 @@
         "summary": "Delete task",
         "parameters": [
           {
-            "name": "id",
+            "name": "uuid",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Task UUID (preferred over deprecated id)"
           }
         ],
         "responses": {
@@ -128,8 +130,13 @@
       "Task": {
         "type": "object",
         "properties": {
+          "uuid": {
+            "type": "string",
+            "description": "Unique task identifier (preferred)"
+          },
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Sequential task ID (deprecated, use uuid instead)"
           },
           "title": {
             "type": "string"
@@ -163,7 +170,7 @@
             "type": "string"
           }
         },
-        "required": ["id", "title", "status"]
+        "required": ["uuid", "title", "status"]
       },
       "TaskInput": {
         "type": "object",

@@ -10,16 +10,12 @@ import XCTest
 
 final class PutTaskContractTests: XCTestCase {
     var taskService: TaskService!
+    var mockExecutor: MockTaskCommandExecutor!
 
     override func setUp() async throws {
         try await super.setUp()
-        // TaskService will be implemented later - this test will fail
-        taskService = TaskService()
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
     }
     
     private func isTaskWarriorAvailable() -> Bool {
@@ -42,40 +38,63 @@ final class PutTaskContractTests: XCTestCase {
 
     override func tearDown() {
         taskService = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
     func testUpdateTaskTitle() async throws {
         // Given
-        let taskId = "test-uuid-123"
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
         let update = TaskUpdate(title: "Updated Task Title")
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789abc",
+                "description": "Updated Task Title",
+                "status": "pending",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse] // First for modify, second for getTask
 
         // When
-        let updatedTask = try await taskService.updateTask(id: taskId, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: taskUuid, update: update)
 
         // Then
         XCTAssertNotNil(updatedTask)
-        XCTAssertEqual(updatedTask.id, taskId)
+        XCTAssertEqual(updatedTask.uuid, taskUuid)
         XCTAssertEqual(updatedTask.title, "Updated Task Title")
     }
 
     func testUpdateTaskStatus() async throws {
         // Given
-        let taskId = "test-uuid-456"
+        let taskUuid = "12345678-1234-1234-1234-123456789def"
         let update = TaskUpdate(status: "completed")
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789def",
+                "description": "Test Task",
+                "status": "completed",
+                "entry": "20250113T000000Z"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse]
 
         // When
-        let updatedTask = try await taskService.updateTask(id: taskId, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: taskUuid, update: update)
 
         // Then
         XCTAssertNotNil(updatedTask)
-        XCTAssertEqual(updatedTask.id, taskId)
+        XCTAssertEqual(updatedTask.uuid, taskUuid)
         XCTAssertEqual(updatedTask.status, "completed")
     }
 
     func testUpdateTaskMultipleFields() async throws {
         // Given
-        let taskId = "test-uuid-789"
+        let taskUuid = "12345678-1234-1234-1234-123456789fed"
         let update = TaskUpdate(
             title: "Updated Title",
             project: "new-project",
@@ -83,13 +102,26 @@ final class PutTaskContractTests: XCTestCase {
             priority: "H",
             comment: "Updated via API"
         )
+        let mockResponse = """
+        [
+            {
+                "uuid": "12345678-1234-1234-1234-123456789fed",
+                "description": "Updated Title",
+                "status": "completed",
+                "entry": "20250113T000000Z",
+                "project": "new-project",
+                "priority": "H"
+            }
+        ]
+        """
+        mockExecutor.mockOutputs = ["", mockResponse]
 
         // When
-        let updatedTask = try await taskService.updateTask(id: taskId, update: update)
+        let updatedTask = try await taskService.updateTask(uuid: taskUuid, update: update)
 
         // Then
         XCTAssertNotNil(updatedTask)
-        XCTAssertEqual(updatedTask.id, taskId)
+        XCTAssertEqual(updatedTask.uuid, taskUuid)
         XCTAssertEqual(updatedTask.title, "Updated Title")
         XCTAssertEqual(updatedTask.project, "new-project")
         XCTAssertEqual(updatedTask.status, "completed")
@@ -99,12 +131,13 @@ final class PutTaskContractTests: XCTestCase {
 
     func testUpdateTaskValidation() async throws {
         // Given - invalid status should fail
-        let taskId = "test-uuid-invalid"
+        let taskUuid = "12345678-1234-1234-1234-123456789cba"
         let invalidUpdate = TaskUpdate(status: "invalid-status")
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            _ = try await taskService.updateTask(id: taskId, update: invalidUpdate)
+            _ = try await taskService.updateTask(uuid: taskUuid, update: invalidUpdate)
             XCTFail("Expected validation error for invalid status")
         } catch {
             // Expected to fail - validation will be implemented
@@ -114,12 +147,13 @@ final class PutTaskContractTests: XCTestCase {
 
     func testUpdateNonExistentTask() async throws {
         // Given
-        let nonExistentId = "non-existent-uuid"
+        let nonExistentUuid = "12345678-1234-1234-1234-000000000000"
         let update = TaskUpdate(title: "Should not work")
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            _ = try await taskService.updateTask(id: nonExistentId, update: update)
+            _ = try await taskService.updateTask(uuid: nonExistentUuid, update: update)
             XCTFail("Expected error for non-existent task")
         } catch {
             // Expected to fail - error handling will be implemented

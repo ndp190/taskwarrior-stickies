@@ -10,16 +10,12 @@ import XCTest
 
 final class DeleteTaskContractTests: XCTestCase {
     var taskService: TaskService!
+    var mockExecutor: MockTaskCommandExecutor!
 
     override func setUp() async throws {
         try await super.setUp()
-        // TaskService will be implemented later - this test will fail
-        taskService = TaskService()
-        
-        // Skip all tests if TaskWarrior is not available
-        if !isTaskWarriorAvailable() {
-            throw XCTSkip("TaskWarrior is not available in test environment")
-        }
+        mockExecutor = MockTaskCommandExecutor()
+        taskService = TaskService(executor: mockExecutor)
     }
     
     private func isTaskWarriorAvailable() -> Bool {
@@ -42,20 +38,23 @@ final class DeleteTaskContractTests: XCTestCase {
 
     override func tearDown() {
         taskService = nil
+        mockExecutor = nil
         super.tearDown()
     }
 
     func testDeleteExistingTask() async throws {
         // Given
-        let taskId = "test-uuid-delete"
+        let taskUuid = "12345678-1234-1234-1234-123456789abc"
+        mockExecutor.mockOutputs = [""]
 
         // When
-        try await taskService.deleteTask(id: taskId)
+        try await taskService.deleteTask(uuid: taskUuid)
 
         // Then
         // Verify task is deleted by trying to get it
+        mockExecutor.mockOutputs = ["[]"] // Return empty array for getTask
         do {
-            _ = try await taskService.getTask(id: taskId)
+            _ = try await taskService.getTask(uuid: taskUuid)
             XCTFail("Expected task to be deleted")
         } catch {
             // Expected - task should not exist after deletion
@@ -65,11 +64,12 @@ final class DeleteTaskContractTests: XCTestCase {
 
     func testDeleteNonExistentTask() async throws {
         // Given
-        let nonExistentId = "non-existent-uuid"
+        let nonExistentUuid = "12345678-1234-1234-1234-000000000000"
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            try await taskService.deleteTask(id: nonExistentId)
+            try await taskService.deleteTask(uuid: nonExistentUuid)
             XCTFail("Expected error for deleting non-existent task")
         } catch {
             // Expected to fail - error handling will be implemented
@@ -79,11 +79,12 @@ final class DeleteTaskContractTests: XCTestCase {
 
     func testDeleteTaskValidation() async throws {
         // Given - invalid UUID should fail
-        let invalidId = "invalid-uuid-format"
+        let invalidUuid = "invalid-uuid-format"
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            try await taskService.deleteTask(id: invalidId)
+            try await taskService.deleteTask(uuid: invalidUuid)
             XCTFail("Expected validation error for invalid UUID")
         } catch {
             // Expected to fail - validation will be implemented
@@ -92,13 +93,14 @@ final class DeleteTaskContractTests: XCTestCase {
     }
 
     func testDeleteTaskWithEmptyId() async throws {
-        // Given - empty ID should fail
-        let emptyId = ""
+        // Given - empty UUID should fail
+        let emptyUuid = ""
+        mockExecutor.mockOutputs = [""]
 
         // When & Then
         do {
-            try await taskService.deleteTask(id: emptyId)
-            XCTFail("Expected validation error for empty ID")
+            try await taskService.deleteTask(uuid: emptyUuid)
+            XCTFail("Expected validation error for empty UUID")
         } catch {
             // Expected to fail - validation will be implemented
             XCTAssertNotNil(error)
