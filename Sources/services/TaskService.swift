@@ -24,6 +24,14 @@ class TaskService: @unchecked Sendable {
     }
 
     func getTask(uuid: String) async throws -> TWTask {
+        // Validate UUID format
+        guard !uuid.isEmpty else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "UUID cannot be empty"])
+        }
+        guard UUID(uuidString: uuid) != nil else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
+        }
+        
         let output = try await executor.execute(arguments: ["export", "uuid:\(uuid)"])
         let tasks = try parseTasks(from: output)
         guard let task = tasks.first else {
@@ -33,6 +41,11 @@ class TaskService: @unchecked Sendable {
     }
 
     func createTask(_ input: TaskInput) async throws -> TWTask {
+        // Validate input
+        guard !input.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Task title cannot be empty"])
+        }
+        
         var arguments = ["add", input.title]
         if let project = input.project {
             arguments.append("project:\(project)")
@@ -53,10 +66,21 @@ class TaskService: @unchecked Sendable {
         // Get the newly created task by finding the most recent one
         // This is a simplification; in practice, you might need to parse the output or use UUID
         let tasks = try await getTasks(filter: nil, sort: nil)
-        return tasks.last!
+        guard let lastTask = tasks.last else {
+            throw NSError(domain: "TaskService", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to retrieve created task"])
+        }
+        return lastTask
     }
 
     func updateTask(uuid: String, update: TaskUpdate) async throws -> TWTask {
+        // Validate UUID format
+        guard !uuid.isEmpty else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "UUID cannot be empty"])
+        }
+        guard UUID(uuidString: uuid) != nil else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
+        }
+        
         var arguments = ["uuid:\(uuid)", "modify"]
         if let title = update.title {
             arguments.append(title)
@@ -79,6 +103,21 @@ class TaskService: @unchecked Sendable {
     }
 
     func deleteTask(uuid: String) async throws {
+        // Validate UUID format
+        guard !uuid.isEmpty else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "UUID cannot be empty"])
+        }
+        guard UUID(uuidString: uuid) != nil else {
+            throw NSError(domain: "TaskService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid UUID format"])
+        }
+        
+        // Check if task exists before deleting
+        do {
+            _ = try await getTask(uuid: uuid)
+        } catch {
+            throw NSError(domain: "TaskService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Task not found"])
+        }
+        
         _ = try await executor.execute(arguments: ["uuid:\(uuid)", "delete", "--yes"])
     }
 

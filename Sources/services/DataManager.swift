@@ -19,6 +19,11 @@ class DataManager {
     }
     
     func createSticky(title: String, settings: StickySettings? = nil) async throws -> Sticky {
+        // Validate title
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw NSError(domain: "DataManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Title cannot be empty"])
+        }
+        
         let id = UUID()
         let sticky = Sticky(
             id: id,
@@ -30,7 +35,7 @@ class DataManager {
             filter: settings?.filter,
             sortBy: settings?.sortBy,
             sortOrder: settings?.sortOrder,
-            visibleColumns: settings?.visibleColumns ?? ["title", "project", "age", "id"]
+            visibleColumns: settings?.visibleColumns ?? ["title", "project", "age"]
         )
         
         try await saveSticky(sticky)
