@@ -1,0 +1,28 @@
+# SwiftLint Configuration
+# Based on common SwiftUI/macOS best practices
+
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+  - identifier_name
+  - type_name
+
+opt_in_rules:
+  - empty_count
+  - force_unwrapping
+  - implicit_getter
+  - missing_docs
+  - redundant_nil_coalescing
+  - unused_closure_parameter
+
+excluded:
+  - .build/
+  - Tests/
+
+# Custom rules for this project
+custom_rules:
+  todo_without_jira:
+    name: "TODO without JIRA"
+    regex: "// TODO: .*"
+    message: "TODO comments should reference a JIRA ticket"
+    severity: warning
